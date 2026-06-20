@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f3ea">
+  <meta name="description" content="食事の時間と写真を、端末の中に記録するPWA">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Meal Note</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow" id="todayLabel"></p>
+        <h1>Meal Note</h1>
+      </div>
+      <button class="icon-button" id="installButton" type="button" hidden aria-label="アプリをインストール">↓</button>
+    </header>
+
+    <main>
+      <section class="hero-card" id="mealTimer">
+        <div id="idleState">
+          <p class="section-kicker">いまから記録</p>
+          <h2>どの食事を始めますか？</h2>
+          <div class="meal-types" id="quickMealTypes" role="group" aria-label="食事の種類">
+            <button class="meal-chip selected" data-meal="breakfast" type="button"><span>☀</span>朝食</button>
+            <button class="meal-chip" data-meal="lunch" type="button"><span>◐</span>昼食</button>
+            <button class="meal-chip" data-meal="dinner" type="button"><span>☾</span>夕食</button>
+            <button class="meal-chip" data-meal="snack" type="button"><span>◇</span>間食</button>
+          </div>
+          <label class="toggle-row">
+            <span><strong>アルコール</strong><small>この食事で飲む</small></span>
+            <input id="quickAlcohol" type="checkbox">
+            <span class="toggle" aria-hidden="true"></span>
+          </label>
+          <button class="primary-button" id="startButton" type="button">食事を始める</button>
+        </div>
+
+        <div id="activeState" hidden>
+          <div class="active-heading">
+            <div>
+              <p class="section-kicker">食事中</p>
+              <h2 id="activeMealName">朝食</h2>
+            </div>
+            <span class="live-dot">記録中</span>
+          </div>
+          <div class="timer" id="timerDisplay">00:00:00</div>
+          <p class="started-at" id="activeStartedAt"></p>
+          <div class="active-actions">
+            <button class="secondary-button" id="activePhotoButton" type="button">写真を追加</button>
+            <button class="primary-button stop" id="stopButton" type="button">食事を終える</button>
+          </div>
+          <input id="activePhotoInput" type="file" accept="image/*" capture="environment" hidden>
+          <p class="photo-ready" id="activePhotoReady" hidden>写真を追加しました</p>
+        </div>
+      </section>
+
+      <section class="summary-grid" aria-label="今日の集計">
+        <article><span id="todayCount">0</span><small>今日の食事</small></article>
+        <article><span id="todayMinutes">0<em>分</em></span><small>食事時間</small></article>
+        <article><span id="alcoholCount">0</span><small>飲酒あり</small></article>
+      </section>
+
+      <section class="history-section">
+        <div class="section-title-row">
+          <div>
+            <p class="section-kicker">履歴</p>
+            <h2>最近の食事</h2>
+          </div>
+          <button class="text-button" id="addManualButton" type="button">＋ 手動追加</button>
+        </div>
+        <div class="filter-row" id="filters" role="group" aria-label="履歴の絞り込み">
+          <button class="filter selected" data-filter="all" type="button">すべて</button>
+          <button class="filter" data-filter="today" type="button">今日</button>
+          <button class="filter" data-filter="alcohol" type="button">飲酒あり</button>
+        </div>
+        <div class="meal-list" id="mealList"></div>
+        <div class="empty-state" id="emptyState" hidden>
+          <div class="empty-icon">○</div>
+          <h3>まだ記録がありません</h3>
+          <p>最初の食事を記録してみましょう。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="mealDialog">
+    <form method="dialog" id="mealForm">
+      <div class="dialog-header">
+        <div>
+          <p class="section-kicker">食事の記録</p>
+          <h2 id="dialogTitle">記録を編集</h2>
+        </div>
+        <button class="close-button" value="cancel" aria-label="閉じる" type="submit">×</button>
+      </div>
+      <input type="hidden" id="recordId">
+      <label class="field-label" for="mealType">食事の種類</label>
+      <select id="mealType" required>
+        <option value="breakfast">朝食</option>
+        <option value="lunch">昼食</option>
+        <option value="dinner">夕食</option>
+        <option value="snack">間食</option>
+      </select>
+      <div class="time-fields">
+        <label><span>開始</span><input id="startTime" type="datetime-local" required></label>
+        <label><span>終了</span><input id="endTime" type="datetime-local" required></label>
+      </div>
+      <label class="toggle-row dialog-toggle">
+        <span><strong>アルコールあり</strong><small>飲酒した場合にオン</small></span>
+        <input id="alcohol" type="checkbox">
+        <span class="toggle" aria-hidden="true"></span>
+      </label>
+      <label class="field-label" for="note">メモ</label>
+      <textarea id="note" rows="3" placeholder="食べたもの、体調など"></textarea>
+      <label class="photo-picker" for="photoInput">
+        <input id="photoInput" type="file" accept="image/*" capture="environment">
+        <span id="photoPickerText">カメラで撮る／写真を選ぶ</span>
+      </label>
+      <img id="photoPreview" class="photo-preview" alt="選択した食事写真" hidden>
+      <div class="dialog-actions">
+        <button class="danger-button" id="deleteButton" type="button">削除</button>
+        <button class="primary-button" id="saveButton" type="button">保存する</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "Meal Note - 食事時間記録",
+  "short_name": "Meal Note",
+  "description": "食事の開始・終了時間、写真、アルコールの有無を記録します。",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f3ea",
+  "theme_color": "#f7f3ea",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
