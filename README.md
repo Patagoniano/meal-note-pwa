@@ -24,18 +24,21 @@ python -m http.server 4173 -d outputs/meal-pwa
 
 ## Googleスプレッドシート同期
 
-PWAにGoogleの秘密鍵を置かないため、Google Apps ScriptのWebアプリURLへ同期します。
+PWAにGoogleの認証情報を置かないため、Google Apps ScriptのWebアプリURLへ同期します。
+WebアプリURLを知っている第三者からの書き込みを防ぐため、同期用の秘密キーも設定します。
 写真本体は送らず、スプレッドシートには `hasPhoto` として写真の有無だけを保存します。
 
 1. Googleスプレッドシートを作成します。
 2. `拡張機能` → `Apps Script` を開きます。
 3. 下のコードを貼り付けます。
-4. `デプロイ` → `新しいデプロイ` → 種類は `ウェブアプリ` を選びます。
-5. 実行ユーザーは `自分`、アクセスできるユーザーは `全員` にします。
-6. 発行された `/exec` で終わるURLをMeal Noteの同期設定に貼り付けます。
+4. `SECRET_KEY` を自分だけの長い文字列に変更します。
+5. `デプロイ` → `新しいデプロイ` → 種類は `ウェブアプリ` を選びます。
+6. 実行ユーザーは `自分`、アクセスできるユーザーは `全員` にします。
+7. 発行された `/exec` で終わるURLと、同じ秘密キーをMeal Noteの同期設定に貼り付けます。
 
 ```javascript
 const SHEET_NAME = "Meal Note";
+const SECRET_KEY = "change-this-to-a-long-random-secret";
 const HEADERS = [
   "id",
   "mealName",
@@ -54,6 +57,12 @@ const HEADERS = [
 
 function doPost(e) {
   const payload = JSON.parse(e.postData.contents || "{}");
+  if (payload.syncKey !== SECRET_KEY) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: false, error: "unauthorized" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   const sheet = getSheet();
   const values = sheet.getDataRange().getValues();
   const idToRow = new Map();

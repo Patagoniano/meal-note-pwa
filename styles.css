@@ -65,7 +65,7 @@ button { color: inherit; }
 .sync-card { background: var(--card); border: 1px solid rgba(222,217,206,.8); border-radius: 22px; padding: 18px; margin: -18px 0 34px; box-shadow: 0 7px 25px rgba(41,48,42,.04); }
 .sync-card .section-title-row { align-items: center; }
 .sync-card h2 { font: 22px Georgia, "Yu Mincho", serif; margin: 4px 0 0; }
-.sync-card input[type="url"] { width: 100%; border: 1px solid var(--line); border-radius: 13px; background: white; padding: 12px; color: var(--ink); }
+.sync-card input[type="url"], .sync-card input[type="password"] { width: 100%; border: 1px solid var(--line); border-radius: 13px; background: white; padding: 12px; color: var(--ink); }
 .sync-toggle { border-bottom: 1px solid var(--line); margin-top: 6px; }
 .sync-toggle small { color: var(--muted); }
 .sync-toggle .toggle { background: #d9d9d5; }

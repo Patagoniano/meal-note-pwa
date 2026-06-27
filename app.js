@@ -211,10 +211,11 @@ function renderSyncPanel() {
   const config = getSyncConfig();
   const pendingCount = records.filter((record) => record.syncHash !== recordSyncHash(record)).length + getDeletedSyncIds().length;
   $("#sheetEndpoint").value = config.endpoint || "";
+  $("#syncKey").value = config.syncKey || "";
   $("#autoSync").checked = config.autoSync !== false;
   $("#syncState").textContent = config.endpoint
-    ? `未同期 ${pendingCount} 件${config.lastSyncedAt ? ` / 最終同期 ${new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(config.lastSyncedAt))}` : ""}`
-    : "Google Apps ScriptのWebアプリURLを入れると同期できます";
+    ? `未同期 ${pendingCount} 件${config.syncKey ? "" : " / 秘密キー未設定"}${config.lastSyncedAt ? ` / 最終同期 ${new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(config.lastSyncedAt))}` : ""}`
+    : "Google Apps ScriptのWebアプリURLと秘密キーを入れると同期できます";
 }
 
 function filteredRecords() {
@@ -339,6 +340,11 @@ async function syncToSheets({ silent = false } = {}) {
     renderSyncPanel();
     return;
   }
+  if (!config.syncKey) {
+    if (!silent) showToast("秘密キーを設定してください");
+    renderSyncPanel();
+    return;
+  }
 
   const deletes = getDeletedSyncIds();
   const upserts = records.filter((record) => record.syncHash !== recordSyncHash(record));
@@ -351,6 +357,7 @@ async function syncToSheets({ silent = false } = {}) {
   const payload = {
     action: "sync",
     source: "meal-note-pwa",
+    syncKey: config.syncKey,
     sentAt: new Date().toISOString(),
     upserts: upserts.map(toSheetRecord),
     deletes
@@ -392,13 +399,14 @@ function syncAfterChange() {
 function sendBeaconSync() {
   const config = getSyncConfig();
   const endpoint = (config.endpoint || "").trim();
-  if (!endpoint || !navigator.sendBeacon) return;
+  if (!endpoint || !config.syncKey || !navigator.sendBeacon) return;
   const deletes = getDeletedSyncIds();
   const upserts = records.filter((record) => record.syncHash !== recordSyncHash(record));
   if (!upserts.length && !deletes.length) return;
   const payload = JSON.stringify({
     action: "sync",
     source: "meal-note-pwa",
+    syncKey: config.syncKey,
     sentAt: new Date().toISOString(),
     upserts: upserts.map(toSheetRecord),
     deletes
@@ -467,6 +475,7 @@ function bindEvents() {
     setSyncConfig({
       ...current,
       endpoint: $("#sheetEndpoint").value.trim(),
+      syncKey: $("#syncKey").value.trim(),
       autoSync: $("#autoSync").checked
     });
     renderSyncPanel();
