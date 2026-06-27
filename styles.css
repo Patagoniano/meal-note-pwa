@@ -62,14 +62,21 @@ button { color: inherit; }
 .summary-grid span { display: block; font: 25px Georgia, serif; }
 .summary-grid em { font: 11px sans-serif; margin-left: 2px; }
 .summary-grid small { color: var(--muted); font-size: 11px; }
-.sync-card { background: var(--card); border: 1px solid rgba(222,217,206,.8); border-radius: 22px; padding: 18px; margin: -18px 0 34px; box-shadow: 0 7px 25px rgba(41,48,42,.04); }
+.sync-card { background: var(--card); border: 1px solid rgba(222,217,206,.8); border-radius: 22px; padding: 0; margin: -18px 0 34px; box-shadow: 0 7px 25px rgba(41,48,42,.04); overflow: hidden; }
 .sync-card .section-title-row { align-items: center; }
 .sync-card h2 { font: 22px Georgia, "Yu Mincho", serif; margin: 4px 0 0; }
+.sync-card summary { list-style: none; }
+.sync-card summary::-webkit-details-marker { display: none; }
+.sync-summary { display: flex; justify-content: space-between; gap: 14px; align-items: center; padding: 18px; cursor: pointer; }
+.sync-chevron { color: var(--green); font-size: 22px; transition: transform .2s; }
+.sync-card[open] .sync-chevron { transform: rotate(180deg); }
+.sync-settings { border-top: 1px solid var(--line); padding: 0 18px 18px; }
+.sync-now { display: block; margin: 12px 0 2px auto; }
 .sync-card input[type="url"], .sync-card input[type="password"] { width: 100%; border: 1px solid var(--line); border-radius: 13px; background: white; padding: 12px; color: var(--ink); }
 .sync-toggle { border-bottom: 1px solid var(--line); margin-top: 6px; }
 .sync-toggle small { color: var(--muted); }
 .sync-toggle .toggle { background: #d9d9d5; }
-.sync-actions { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; margin-top: 14px; }
+.sync-actions { display: flex; justify-content: flex-start; margin-top: 14px; }
 .secondary-button.dark { color: white; background: var(--green); border-color: var(--green); }
 #syncState { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0; }
 .section-title-row { display: flex; justify-content: space-between; align-items: end; }

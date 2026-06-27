@@ -213,9 +213,16 @@ function renderSyncPanel() {
   $("#sheetEndpoint").value = config.endpoint || "";
   $("#syncKey").value = config.syncKey || "";
   $("#autoSync").checked = config.autoSync !== false;
-  $("#syncState").textContent = config.endpoint
-    ? `未同期 ${pendingCount} 件${config.syncKey ? "" : " / 秘密キー未設定"}${config.lastSyncedAt ? ` / 最終同期 ${new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(config.lastSyncedAt))}` : ""}`
-    : "Google Apps ScriptのWebアプリURLと秘密キーを入れると同期できます";
+  const lastSynced = config.lastSyncedAt
+    ? ` / 最終同期 ${new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(config.lastSyncedAt))}`
+    : "";
+  if (!config.endpoint || !config.syncKey) {
+    $("#syncState").textContent = "未設定: URLと秘密キーを入れると同期できます";
+    return;
+  }
+  $("#syncState").textContent = pendingCount
+    ? `未同期 ${pendingCount} 件${lastSynced}`
+    : `同期済み${lastSynced}`;
 }
 
 function filteredRecords() {
