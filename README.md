@@ -1,24 +1,109 @@
 # Meal Note
 
-Android向けの食事時間記録PWAです。データと写真はブラウザのIndexedDBに保存されます。
+Android向けの食事時間記録PWAです。記録と写真はブラウザ内のIndexedDBに保存されます。
 
 ## 起動
 
-Service Workerを利用するため、`index.html`を直接開かずHTTPサーバーから配信してください。
+Service Workerを使うため、`index.html`を直接開かずHTTPサーバーから配信してください。
 
 ```powershell
 python -m http.server 4173 -d outputs/meal-pwa
 ```
 
-同じPCでは `http://localhost:4173` を開きます。Androidから確認する場合は、PCと同じネットワークに接続し、HTTPSで公開するかデプロイしたURLをChromeで開いてください。
+同じPCでは `http://localhost:4173` を開きます。Androidから確認する場合は、HTTPSで公開されたURLをChromeで開いてください。
 
-## 現在の機能
+## 機能
 
 - 朝食、昼食、夕食、間食の開始・終了記録
-- アルコールの有無
+- アルコール有無
 - 食事写真とメモ
 - 手動追加、編集、削除
-- 今日の件数、時間、飲酒回数の集計
+- 今日の件数、食事時間、飲酒回数の集計
 - オフライン対応とホーム画面へのインストール
+- Googleスプレッドシートへの同期
 
-データはこの端末内だけに保存されます。ブラウザのサイトデータを削除すると記録も消えるため、将来の外部同期追加を前提としています。
+## Googleスプレッドシート同期
+
+PWAにGoogleの秘密鍵を置かないため、Google Apps ScriptのWebアプリURLへ同期します。
+写真本体は送らず、スプレッドシートには `hasPhoto` として写真の有無だけを保存します。
+
+1. Googleスプレッドシートを作成します。
+2. `拡張機能` → `Apps Script` を開きます。
+3. 下のコードを貼り付けます。
+4. `デプロイ` → `新しいデプロイ` → 種類は `ウェブアプリ` を選びます。
+5. 実行ユーザーは `自分`、アクセスできるユーザーは `全員` にします。
+6. 発行された `/exec` で終わるURLをMeal Noteの同期設定に貼り付けます。
+
+```javascript
+const SHEET_NAME = "Meal Note";
+const HEADERS = [
+  "id",
+  "mealName",
+  "type",
+  "start",
+  "end",
+  "durationMinutes",
+  "alcohol",
+  "note",
+  "hasPhoto",
+  "createdAt",
+  "updatedAt",
+  "syncedAt",
+  "syncedFrom"
+];
+
+function doPost(e) {
+  const payload = JSON.parse(e.postData.contents || "{}");
+  const sheet = getSheet();
+  const values = sheet.getDataRange().getValues();
+  const idToRow = new Map();
+
+  for (let i = 1; i < values.length; i++) {
+    idToRow.set(values[i][0], i + 1);
+  }
+
+  [...new Set(payload.deletes || [])]
+    .map((id) => idToRow.get(id))
+    .filter(Boolean)
+    .sort((a, b) => b - a)
+    .forEach((row) => sheet.deleteRow(row));
+
+  idToRow.clear();
+  sheet.getDataRange().getValues().forEach((row, index) => {
+    if (index > 0) idToRow.set(row[0], index + 1);
+  });
+
+  (payload.upserts || []).forEach((record) => {
+    const rowValues = HEADERS.map((header) => {
+      if (header === "syncedAt") return new Date().toISOString();
+      return record[header] ?? "";
+    });
+    const row = idToRow.get(record.id);
+    if (row) {
+      sheet.getRange(row, 1, 1, HEADERS.length).setValues([rowValues]);
+    } else {
+      sheet.appendRow(rowValues);
+    }
+  });
+
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
+  const firstRow = sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0];
+  if (firstRow[0] !== "id") {
+    sheet.clear();
+    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+  }
+  return sheet;
+}
+```
+
+## 保存済みデータについて
+
+同期機能を追加しても、端末内の既存データは削除されません。
+既存データは初回同期時に「未同期」として扱われ、まとめてGoogleスプレッドシートへ送信されます。

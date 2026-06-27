@@ -64,6 +64,27 @@
         <article><span id="alcoholCount">0</span><small>飲酒あり</small></article>
       </section>
 
+      <section class="sync-card" id="syncPanel">
+        <div class="section-title-row">
+          <div>
+            <p class="section-kicker">Sync</p>
+            <h2>Googleスプレッドシート連携</h2>
+          </div>
+          <button class="text-button" id="syncNowButton" type="button">今すぐ同期</button>
+        </div>
+        <label class="field-label" for="sheetEndpoint">Apps Script WebアプリURL</label>
+        <input id="sheetEndpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec">
+        <label class="toggle-row sync-toggle">
+          <span><strong>自動同期</strong><small>保存・編集・削除時と、アプリを閉じる時に送信を試します</small></span>
+          <input id="autoSync" type="checkbox" checked>
+          <span class="toggle" aria-hidden="true"></span>
+        </label>
+        <div class="sync-actions">
+          <button class="secondary-button dark" id="saveSyncSettings" type="button">設定を保存</button>
+          <p id="syncState">Google Apps ScriptのWebアプリURLを入れると同期できます</p>
+        </div>
+      </section>
+
       <section class="history-section">
         <div class="section-title-row">
           <div>

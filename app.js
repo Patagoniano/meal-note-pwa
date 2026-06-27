@@ -1,6 +1,9 @@
 const DB_NAME = "meal-note-db";
 const STORE_NAME = "meals";
 const ACTIVE_KEY = "meal-note-active";
+const SYNC_CONFIG_KEY = "meal-note-sync-config";
+const SYNC_DELETES_KEY = "meal-note-sync-deletes";
+
 const mealNames = { breakfast: "朝食", lunch: "昼食", dinner: "夕食", snack: "間食" };
 const mealSymbols = { breakfast: "☀", lunch: "◐", dinner: "☾", snack: "◇" };
 
@@ -17,7 +20,11 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 function openDb() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME, { keyPath: "id" });
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(STORE_NAME)) {
+        request.result.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
@@ -57,6 +64,26 @@ function getActiveMeal() {
 function setActiveMeal(meal) {
   if (meal) localStorage.setItem(ACTIVE_KEY, JSON.stringify(meal));
   else localStorage.removeItem(ACTIVE_KEY);
+}
+
+function getSyncConfig() {
+  try { return JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY)) || {}; } catch { return {}; }
+}
+
+function setSyncConfig(config) {
+  localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(config));
+}
+
+function getDeletedSyncIds() {
+  try { return JSON.parse(localStorage.getItem(SYNC_DELETES_KEY)) || []; } catch { return []; }
+}
+
+function setDeletedSyncIds(ids) {
+  localStorage.setItem(SYNC_DELETES_KEY, JSON.stringify([...new Set(ids)]));
+}
+
+function queueDeletedSyncId(id) {
+  setDeletedSyncIds([...getDeletedSyncIds(), id]);
 }
 
 function isSameDay(value, comparison = new Date()) {
@@ -115,9 +142,37 @@ async function resizePhoto(file) {
   return canvas.toDataURL("image/jpeg", .78);
 }
 
+function syncComparableRecord(record) {
+  return {
+    id: record.id,
+    type: record.type,
+    start: record.start,
+    end: record.end,
+    alcohol: Boolean(record.alcohol),
+    note: record.note || "",
+    createdAt: record.createdAt || "",
+    updatedAt: record.updatedAt || "",
+    hasPhoto: Boolean(record.photo)
+  };
+}
+
+function recordSyncHash(record) {
+  return JSON.stringify(syncComparableRecord(record));
+}
+
+function toSheetRecord(record) {
+  return {
+    ...syncComparableRecord(record),
+    mealName: mealNames[record.type] || record.type,
+    durationMinutes: minutesBetween(record.start, record.end),
+    syncedFrom: "Meal Note PWA"
+  };
+}
+
 function render() {
   renderActiveMeal();
   renderSummary();
+  renderSyncPanel();
   renderRecords();
 }
 
@@ -127,9 +182,11 @@ function renderActiveMeal() {
   $("#activeState").hidden = !active;
   clearInterval(timerHandle);
   if (!active) return;
+
   $("#activeMealName").textContent = mealNames[active.type];
   $("#activeStartedAt").textContent = `${formatTime(active.start)} に開始${active.alcohol ? "・アルコールあり" : ""}`;
   $("#activePhotoReady").hidden = !active.photo;
+
   const updateTimer = () => {
     const seconds = Math.max(0, Math.floor((Date.now() - new Date(active.start).getTime()) / 1000));
     const h = String(Math.floor(seconds / 3600)).padStart(2, "0");
@@ -148,6 +205,18 @@ function renderSummary() {
   $("#alcoholCount").textContent = today.filter((record) => record.alcohol).length;
 }
 
+function renderSyncPanel() {
+  const panel = $("#syncPanel");
+  if (!panel) return;
+  const config = getSyncConfig();
+  const pendingCount = records.filter((record) => record.syncHash !== recordSyncHash(record)).length + getDeletedSyncIds().length;
+  $("#sheetEndpoint").value = config.endpoint || "";
+  $("#autoSync").checked = config.autoSync !== false;
+  $("#syncState").textContent = config.endpoint
+    ? `未同期 ${pendingCount} 件${config.lastSyncedAt ? ` / 最終同期 ${new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(config.lastSyncedAt))}` : ""}`
+    : "Google Apps ScriptのWebアプリURLを入れると同期できます";
+}
+
 function filteredRecords() {
   const sorted = [...records].sort((a, b) => new Date(b.start) - new Date(a.start));
   if (currentFilter === "today") return sorted.filter((record) => isSameDay(record.start));
@@ -162,11 +231,15 @@ function renderRecords() {
     const photo = record.photo
       ? `<img class="meal-photo" src="${record.photo}" alt="${mealNames[record.type]}の写真">`
       : `<div class="meal-photo-placeholder" aria-hidden="true">${mealSymbols[record.type]}</div>`;
+    const syncLine = record.syncHash === recordSyncHash(record)
+      ? '<p class="sync-line">Sheets同期済み</p>'
+      : '<p class="sync-line pending">Sheets未同期</p>';
     return `<article class="meal-card" data-id="${record.id}" tabindex="0" role="button" aria-label="${mealNames[record.type]}を編集">
       ${photo}
       <div>
         <h3>${mealNames[record.type]} ${record.alcohol ? '<span class="alcohol-mark">・飲酒</span>' : ""}</h3>
-        <p class="meal-meta">${formatDate(record.start)}　${formatTime(record.start)}–${formatTime(record.end)}</p>
+        <p class="meal-meta">${formatDate(record.start)}　${formatTime(record.start)}-${formatTime(record.end)}</p>
+        ${syncLine}
         ${record.note ? `<p class="meal-note">${escapeHtml(record.note)}</p>` : ""}
       </div>
       <div class="duration">${minutesBetween(record.start, record.end)}<small>分</small></div>
@@ -197,6 +270,7 @@ async function stopMeal() {
   $("#quickAlcohol").checked = false;
   render();
   showToast("食事を記録しました");
+  syncAfterChange();
 }
 
 function openRecordDialog(record = null) {
@@ -223,6 +297,7 @@ async function saveDialogRecord() {
   const end = new Date($("#endTime").value);
   if (!$("#startTime").value || !$("#endTime").value) return showToast("開始と終了を入力してください");
   if (end <= start) return showToast("終了は開始より後にしてください");
+
   const existing = records.find((record) => record.id === $("#recordId").value);
   const record = {
     id: existing?.id || crypto.randomUUID(),
@@ -235,21 +310,100 @@ async function saveDialogRecord() {
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+
   await putRecord(record);
   records = await getAllRecords();
   $("#mealDialog").close();
   render();
   showToast("記録を保存しました");
+  syncAfterChange();
 }
 
 async function deleteDialogRecord() {
   const id = $("#recordId").value;
   if (!id || !confirm("この食事記録を削除しますか？")) return;
+  queueDeletedSyncId(id);
   await removeRecord(id);
   records = await getAllRecords();
   $("#mealDialog").close();
   render();
   showToast("記録を削除しました");
+  syncAfterChange();
+}
+
+async function syncToSheets({ silent = false } = {}) {
+  const config = getSyncConfig();
+  const endpoint = (config.endpoint || "").trim();
+  if (!endpoint) {
+    if (!silent) showToast("Sheets同期URLを設定してください");
+    renderSyncPanel();
+    return;
+  }
+
+  const deletes = getDeletedSyncIds();
+  const upserts = records.filter((record) => record.syncHash !== recordSyncHash(record));
+  if (!upserts.length && !deletes.length) {
+    if (!silent) showToast("同期する変更はありません");
+    renderSyncPanel();
+    return;
+  }
+
+  const payload = {
+    action: "sync",
+    source: "meal-note-pwa",
+    sentAt: new Date().toISOString(),
+    upserts: upserts.map(toSheetRecord),
+    deletes
+  };
+
+  try {
+    await fetch(endpoint, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+
+    const syncedAt = new Date().toISOString();
+    await Promise.all(upserts.map((record) => putRecord({
+      ...record,
+      syncHash: recordSyncHash(record),
+      syncedAt
+    })));
+    setDeletedSyncIds([]);
+    setSyncConfig({ ...config, endpoint, lastSyncedAt: syncedAt });
+    records = await getAllRecords();
+    render();
+    if (!silent) showToast("Googleスプレッドシートへ同期しました");
+  } catch (error) {
+    console.error(error);
+    renderSyncPanel();
+    if (!silent) showToast("同期できませんでした。通信状態を確認してください");
+  }
+}
+
+function syncAfterChange() {
+  const config = getSyncConfig();
+  if (config.endpoint && config.autoSync !== false && navigator.onLine) {
+    syncToSheets({ silent: true });
+  }
+}
+
+function sendBeaconSync() {
+  const config = getSyncConfig();
+  const endpoint = (config.endpoint || "").trim();
+  if (!endpoint || !navigator.sendBeacon) return;
+  const deletes = getDeletedSyncIds();
+  const upserts = records.filter((record) => record.syncHash !== recordSyncHash(record));
+  if (!upserts.length && !deletes.length) return;
+  const payload = JSON.stringify({
+    action: "sync",
+    source: "meal-note-pwa",
+    sentAt: new Date().toISOString(),
+    upserts: upserts.map(toSheetRecord),
+    deletes
+  });
+  navigator.sendBeacon(endpoint, new Blob([payload], { type: "text/plain;charset=utf-8" }));
 }
 
 function bindEvents() {
@@ -307,6 +461,21 @@ function bindEvents() {
     await deferredInstallPrompt.userChoice;
     deferredInstallPrompt = null;
     $("#installButton").hidden = true;
+  });
+  $("#saveSyncSettings").addEventListener("click", () => {
+    const current = getSyncConfig();
+    setSyncConfig({
+      ...current,
+      endpoint: $("#sheetEndpoint").value.trim(),
+      autoSync: $("#autoSync").checked
+    });
+    renderSyncPanel();
+    showToast("同期設定を保存しました");
+  });
+  $("#syncNowButton").addEventListener("click", () => syncToSheets());
+  window.addEventListener("online", () => syncAfterChange());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") sendBeaconSync();
   });
 }
 

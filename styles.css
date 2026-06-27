@@ -62,6 +62,16 @@ button { color: inherit; }
 .summary-grid span { display: block; font: 25px Georgia, serif; }
 .summary-grid em { font: 11px sans-serif; margin-left: 2px; }
 .summary-grid small { color: var(--muted); font-size: 11px; }
+.sync-card { background: var(--card); border: 1px solid rgba(222,217,206,.8); border-radius: 22px; padding: 18px; margin: -18px 0 34px; box-shadow: 0 7px 25px rgba(41,48,42,.04); }
+.sync-card .section-title-row { align-items: center; }
+.sync-card h2 { font: 22px Georgia, "Yu Mincho", serif; margin: 4px 0 0; }
+.sync-card input[type="url"] { width: 100%; border: 1px solid var(--line); border-radius: 13px; background: white; padding: 12px; color: var(--ink); }
+.sync-toggle { border-bottom: 1px solid var(--line); margin-top: 6px; }
+.sync-toggle small { color: var(--muted); }
+.sync-toggle .toggle { background: #d9d9d5; }
+.sync-actions { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; margin-top: 14px; }
+.secondary-button.dark { color: white; background: var(--green); border-color: var(--green); }
+#syncState { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0; }
 .section-title-row { display: flex; justify-content: space-between; align-items: end; }
 .section-title-row h2 { font: 26px Georgia, "Yu Mincho", serif; margin: 4px 0 0; }
 .text-button { border: 0; background: transparent; color: var(--green); font-weight: 800; padding: 8px 0; }
@@ -74,6 +84,8 @@ button { color: inherit; }
 .meal-photo-placeholder { display: grid; place-items: center; color: var(--green); background: #e8ecdf; font: 27px Georgia, serif; }
 .meal-card h3 { margin: 0 0 5px; font-size: 16px; }
 .meal-meta { color: var(--muted); font-size: 12px; margin: 0; }
+.sync-line { color: var(--green); font-size: 11px; font-weight: 800; margin: 4px 0 0; }
+.sync-line.pending { color: var(--orange); }
 .meal-note { color: var(--muted); margin: 5px 0 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
 .duration { text-align: right; font: 18px Georgia, serif; }
 .duration small { display: block; color: var(--muted); font: 10px sans-serif; margin-top: 3px; }
@@ -111,4 +123,5 @@ textarea { resize: vertical; }
   .meal-card { grid-template-columns: 62px 1fr auto; gap: 11px; }
   .meal-photo, .meal-photo-placeholder { width: 62px; height: 62px; }
   .time-fields { grid-template-columns: 1fr; }
+  .sync-actions { grid-template-columns: 1fr; }
 }
