@@ -122,6 +122,20 @@ function getSheet() {
 ローカルの `postgres` Dockerコンテナに、食事データ用の `meal_note` DBと `meal_records` テーブルを作成できます。
 Googleスプレッドシートの `Meal Note` シートをCSVでダウンロードしてから、以下を実行してください。
 
+バッチファイルにCSVをドラッグ&ドロップする場合:
+
+```text
+postgres\import-meals.bat
+```
+
+コマンドでCSVパスを指定する場合:
+
+```cmd
+postgres\import-meals.bat C:\path\to\MealNote.csv
+```
+
+PowerShellから直接実行する場合:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\postgres\Import-MealCsv.ps1 -CsvPath C:\path\to\MealNote.csv
 ```
