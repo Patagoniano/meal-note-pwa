@@ -147,3 +147,26 @@ id,mealName,type,start,end,durationMinutes,alcohol,note,hasPhoto,createdAt,updat
 ```
 
 同じ `id` の行は追加ではなく更新されるため、同じCSVを再取り込みしても重複しません。
+
+### タスクスケジューラ登録
+
+毎日決まった時刻にCSVをPostgreSQLへ取り込む場合は、以下を実行します。
+時刻を省略すると `03:00`、タスク名を省略すると `MealNotePostgresImport` になります。
+
+```cmd
+postgres\register-meal-import-task.bat C:\path\to\MealNote.csv 03:00 MealNotePostgresImport
+```
+
+登録されたタスクは、内部的に以下を実行します。
+
+```cmd
+postgres\run-scheduled-import.bat C:\path\to\MealNote.csv
+```
+
+実行ログは以下に出力されます。
+
+```text
+postgres\logs\meal-import.log
+```
+
+CSVの保存場所を変えた場合は、同じ登録コマンドを新しいCSVパスで再実行してください。既存タスクは上書きされます。
