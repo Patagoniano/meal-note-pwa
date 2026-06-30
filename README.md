@@ -116,3 +116,20 @@ function getSheet() {
 
 同期機能を追加しても、端末内の既存データは削除されません。
 既存データは初回同期時に「未同期」として扱われ、まとめてGoogleスプレッドシートへ送信されます。
+
+## PostgreSQLへの取り込み
+
+ローカルの `postgres` Dockerコンテナに、食事データ用の `meal_note` DBと `meal_records` テーブルを作成できます。
+Googleスプレッドシートの `Meal Note` シートをCSVでダウンロードしてから、以下を実行してください。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\postgres\Import-MealCsv.ps1 -CsvPath C:\path\to\MealNote.csv
+```
+
+CSVの列はApps Scriptの `HEADERS` と同じ順番を想定しています。
+
+```text
+id,mealName,type,start,end,durationMinutes,alcohol,note,hasPhoto,createdAt,updatedAt,syncedAt,syncedFrom
+```
+
+同じ `id` の行は追加ではなく更新されるため、同じCSVを再取り込みしても重複しません。
